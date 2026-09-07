@@ -1,0 +1,22 @@
+# Node dependencies
+node_modules/
+
+# Compiled extension output
+extension/out/
+
+# VS Code local files
+.vscode/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
