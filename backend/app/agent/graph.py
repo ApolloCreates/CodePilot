@@ -7,6 +7,13 @@ from backend.app.llm.repository_agent import investigate_repository
 from backend.app.llm.client import get_llm
 
 from langchain_core.messages import HumanMessage
+from backend.app.tools.edit import edit_file
+
+from backend.app.tools.test_runner import run_tests
+
+from backend.app.llm.implementation_agent import (
+    implement_changes,
+)
 
 import json
 import re
@@ -136,33 +143,97 @@ Rules:
 def implement_fix(state: DebugState):
     print("Implementing fix...")
 
+    if not state["diagnosis_supported"]:
+        return {
+            "status": "unsupported",
+        }
+
+    modified_files = implement_changes(
+        workspace=state["workspace_path"],
+        bug_description=state["bug_description"],
+        root_cause=state["root_cause"],
+        fix_plan=state["fix_plan"],
+        relevant_files=state["relevant_files"],
+        repository_context=state["repository_context"],
+    )
+
+    if not modified_files:
+        return {
+            "status": "implementation_failed",
+            "errors": [
+                *state["errors"],
+                "Implementation agent did not modify any files.",
+            ],
+            "iteration_count": state["iteration_count"] + 1,
+        }
+
     return {
-        "status": "implementing",
+        "status": "implemented",
+        "modified_files": list(
+            dict.fromkeys(
+                state["modified_files"] + modified_files
+            )
+        ),
         "iteration_count": state["iteration_count"] + 1,
     }
-
+    
 
 def run_validation(state: DebugState):
     print("Running validation...")
 
-    # Temporary simulation.
-    # Real test execution will be implemented later.
+    workspace = state["workspace_path"]
+
+    result = run_tests.invoke({
+        "workspace": workspace,
+        "command": "pytest backend/app/demo_target/test_calculator.py",
+    })
+
+    output_parts = [
+        f"Exit code: {result['exit_code']}",
+        result["stdout"],
+        result["stderr"],
+    ]
+
+    if result["error"]:
+        output_parts.append(
+            f"Runner error: {result['error']}"
+        )
+
+    validation_output = "\n".join(
+        part
+        for part in output_parts
+        if part
+    )
+
     return {
-        "status": "validating",
-        "validation_command": "pytest",
-        "validation_output": "Simulated failed test run",
-        "validation_passed": False,  # Simulate a failed validation for testing purposes
+        "status": "validated",
+        "validation_command": (
+            "pytest backend/app/demo_target/test_calculator.py"
+        ),
+        "validation_output": validation_output,
+        "validation_passed": result["passed"],
     }
-
-
+    
+    
 def verify_fix(state: DebugState):
     print("Verifying fix...")
+
+    if not state["validation_passed"]:
+        return {
+            "status": "verification_failed",
+            "confidence": 0.0,
+        }
+
+    if not state["modified_files"]:
+        return {
+            "status": "verification_failed",
+            "confidence": 0.0,
+        }
 
     return {
         "status": "verified",
         "confidence": 1.0,
     }
-
 
 def diagnose_failure(state: DebugState):
     print("Diagnosing validation failure...")

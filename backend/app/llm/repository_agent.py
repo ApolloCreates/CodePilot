@@ -3,6 +3,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from backend.app.llm.client import get_llm
 from backend.app.tools.filesystem import list_files, read_file
 from backend.app.tools.search import search_code
+from backend.app.tools.edit import edit_file
 
 
 TOOLS = [
