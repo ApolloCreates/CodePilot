@@ -28,3 +28,9 @@ class DebugState(TypedDict):
     iteration_count: int
     confidence: float
     status: str
+    
+    proposed_file: str
+    proposed_old_text: str
+    proposed_new_text: str
+    
+    approval_status: str

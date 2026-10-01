@@ -7,12 +7,11 @@ from backend.app.llm.repository_agent import investigate_repository
 from backend.app.llm.client import get_llm
 
 from langchain_core.messages import HumanMessage
-from backend.app.tools.edit import edit_file
 
 from backend.app.tools.test_runner import run_tests
 
 from backend.app.llm.implementation_agent import (
-    implement_changes,
+    generate_proposed_change,
 )
 
 import json
@@ -148,7 +147,7 @@ def implement_fix(state: DebugState):
             "status": "unsupported",
         }
 
-    modified_files = implement_changes(
+    proposal = generate_proposed_change(
         workspace=state["workspace_path"],
         bug_description=state["bug_description"],
         root_cause=state["root_cause"],
@@ -157,7 +156,7 @@ def implement_fix(state: DebugState):
         repository_context=state["repository_context"],
     )
 
-    if not modified_files:
+    if not proposal:
         return {
             "status": "implementation_failed",
             "errors": [
@@ -168,13 +167,11 @@ def implement_fix(state: DebugState):
         }
 
     return {
-        "status": "implemented",
-        "modified_files": list(
-            dict.fromkeys(
-                state["modified_files"] + modified_files
-            )
-        ),
-        "iteration_count": state["iteration_count"] + 1,
+        "status": "change_proposed",
+        "proposed_file": proposal["file"],
+        "proposed_old_text": proposal["old_text"],
+        "proposed_new_text": proposal["new_text"],
+        "approval_status": "pending",
     }
     
 
@@ -382,7 +379,7 @@ builder.add_edge(
     "stop_unsupported",
     END,
 )
-builder.add_edge("implement_fix", "run_validation")
+builder.add_edge("implement_fix", END)
 
 builder.add_conditional_edges(
     "run_validation",

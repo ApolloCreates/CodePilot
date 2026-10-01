@@ -22,7 +22,7 @@ TOOL_REGISTRY = {
 def investigate_repository(
     workspace: str,
     task: str,
-    max_rounds: int = 8,
+    max_rounds: int = 4,
 ) -> str:
     """Use the LLM and repository tools to investigate a workspace."""
 
@@ -47,45 +47,40 @@ Use the available repository tools to investigate the code.
 Important rules:
 - Do not guess.
 - Use repository evidence.
-- Keep tool results focused.
-- Start with search_code when you know a symbol, command, class, or function name.
+- Start with search_code when you know a symbol, function, class, or command name.
 - Read only the most relevant source files.
-- Prefer source files over generated files such as extension/out.
-- Do not inspect compiled or generated files when the corresponding source file is available.
-- You may use multiple tools when necessary.
-- Once you have enough evidence to answer the investigation task confidently, STOP using tools and provide your conclusion.
-- Do not keep searching for additional confirmation once the relevant implementation has been established.
+- Prefer source files over generated files.
+- Do not inspect compiled or generated files when source is available.
+- Once you have enough evidence, stop using tools and provide your conclusion.
 - Do not modify files.
 
 Tool usage:
-- Tool arguments must exactly match the provided tool schemas.
-- For file paths, always provide paths relative to the workspace.
+- Tool arguments must exactly match the provided schemas.
+- File paths must be relative to the workspace.
 - Never include the workspace path inside relative_path.
-- If a tool reports an error, use the error information to correct your next tool call.
 """
         )
     ]
+
+    evidence = []
 
     for round_number in range(1, max_rounds + 1):
 
         print(f"\n--- Investigation Round {round_number} ---")
 
+        # Prevent the conversation from growing indefinitely.
+        if len(messages) > 7:
+            messages = [
+                messages[0],
+                *messages[-6:],
+            ]
+
         response = llm_with_tools.invoke(messages)
 
         messages.append(response)
 
-        if response.tool_calls:
-            for tool_call in response.tool_calls:
-                print(
-                    f"LLM requested: {tool_call['name']}"
-                )
-                print(
-                    f"Arguments: {tool_call['args']}"
-                )
-        else:
-            print("LLM returned a final response.")
-
         if not response.tool_calls:
+            print("LLM returned a final response.")
             return response.content
 
         for tool_call in response.tool_calls:
@@ -93,6 +88,9 @@ Tool usage:
             tool_name = tool_call["name"]
             tool_args = tool_call["args"]
             tool_call_id = tool_call["id"]
+
+            print(f"LLM requested: {tool_name}")
+            print(f"Arguments: {tool_args}")
 
             tool = TOOL_REGISTRY.get(tool_name)
 
@@ -103,13 +101,23 @@ Tool usage:
 
             try:
                 result = tool.invoke(tool_args)
-
                 tool_result = str(result)
 
             except Exception as error:
                 tool_result = (
-                    f"Tool execution failed: {type(error).__name__}: {error}"
+                    f"Tool execution failed: "
+                    f"{type(error).__name__}: {error}"
                 )
+
+            # Keep a separate compact evidence record.
+            evidence.append(
+                f"""
+Tool: {tool_name}
+Arguments: {tool_args}
+Result:
+{tool_result}
+"""
+            )
 
             messages.append(
                 ToolMessage(
@@ -118,4 +126,48 @@ Tool usage:
                 )
             )
 
-    return "Repository investigation stopped after reaching the tool-call limit."
+    # The exploration limit was reached.
+    # Give the model one final opportunity to synthesize
+    # the evidence already collected, without tools.
+
+    evidence_text = "\n".join(evidence)
+
+    final_prompt = f"""
+You are completing a CodePilot repository investigation.
+
+Investigation task:
+{task}
+
+Repository workspace:
+{workspace}
+
+The repository exploration phase has reached its maximum
+number of tool-call rounds.
+
+Do NOT request any more tools.
+
+Use ONLY the repository evidence collected below.
+
+Repository evidence:
+{evidence_text}
+
+Provide a concise investigation conclusion.
+
+Include:
+
+1. Relevant file paths
+2. Relevant function or class names
+3. The relevant implementation details
+4. Evidence supporting the diagnosis
+
+Do not guess.
+
+If the evidence is insufficient, explicitly state what
+information is missing.
+"""
+
+    final_response = llm.invoke(
+        [HumanMessage(content=final_prompt)]
+    )
+
+    return final_response.content

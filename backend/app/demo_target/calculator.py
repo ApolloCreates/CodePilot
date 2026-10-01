@@ -1,2 +1,2 @@
 def calculate_discount(price: float, percentage: float) -> float:
-    return price * (1 - percentage / 100)
+    return price * (1 - percentage)
