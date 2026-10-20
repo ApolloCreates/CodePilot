@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 
@@ -11,6 +11,12 @@ app = FastAPI(
 class DebugRequest(BaseModel):
     bug_description: str
     workspace_path: str
+
+class ApplyRequest(BaseModel):
+    workspace_path: str
+    proposed_file: str
+    proposed_old_text: str
+    proposed_new_text: str
 
 
 @app.get("/health")
@@ -61,4 +67,30 @@ def debug(request: DebugRequest):
         "proposed_new_text": result["proposed_new_text"],
         "approval_status": result["approval_status"],
         "confidence": result["confidence"],
+        "workspace_path": result["workspace_path"],
     }
+
+
+@app.post("/api/apply")
+def apply_fix(request: ApplyRequest):
+    from backend.app.tools.edit import edit_file
+
+    try:
+        result = edit_file.invoke({
+            "workspace": request.workspace_path,
+            "relative_path": request.proposed_file,
+            "old_text": request.proposed_old_text,
+            "new_text": request.proposed_new_text,
+        })
+
+        return {
+            "status": "applied",
+            "file": request.proposed_file,
+            "message": result,
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error

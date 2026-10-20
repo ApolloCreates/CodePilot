@@ -1,71 +1,40 @@
-# codepilot README
+# CodePilot
 
-This is the README for your extension "codepilot". After writing up a brief description, we recommend including the following sections.
+CodePilot is an AI-powered debugging agent for Visual Studio Code. It investigates reported bugs, analyzes relevant workspace files, and proposes code changes for developer review.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Repository-aware code investigation
+- AI-powered root-cause analysis
+- Targeted code-fix proposals
+- Review, apply, or reject proposed changes
+- Workspace-bounded file modifications
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code 1.135.0 or later
+- Python 3.12+
+- Node.js and npm
+- A Groq API key
+- The CodePilot Python backend running locally
 
-## Extension Settings
+## Getting Started
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+1. Clone the [CodePilot repository](https://github.com/ApolloCreates/CodePilot).
+2. Follow the backend setup and API-key configuration instructions in the main repository README.
+3. Start the backend at `http://127.0.0.1:8000`.
+4. Install the CodePilot VSIX extension in VS Code.
+5. Open the project you want to debug.
+6. Run **CodePilot: Fix Bug** from the Command Palette and describe the problem.
+7. Review the proposed fix before applying it.
 
-For example:
+## Important Notes
 
-This extension contributes the following settings:
+- The backend must be running for the extension to work.
+- Relevant code context may be sent to the configured LLM provider.
+- Review proposed changes and run your tests before relying on a fix.
+- CodePilot is an active development project; some behavior may change.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## License
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+See the repository for license information.

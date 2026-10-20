@@ -15,4 +15,5 @@ def get_llm():
     return ChatGroq(
         model="qwen/qwen3.8-27b",
         temperature=0,
+        max_tokens=800,
     )

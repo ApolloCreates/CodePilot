@@ -5,6 +5,7 @@ interface DebugResponse {
     status: string;
     bug_description: string;
     root_cause: string;
+    workspace_path: string;
     fix_plan: string;
     proposed_file: string;
     proposed_old_text: string;
@@ -237,7 +238,7 @@ function showResultPanel(
     `;
 
     panel.webview.onDidReceiveMessage(
-        message => {
+        async message => {
             if (message.command === 'reject') {
                 vscode.window.showInformationMessage(
                     'CodePilot: Proposed fix rejected.'
@@ -247,9 +248,45 @@ function showResultPanel(
             }
 
             if (message.command === 'apply') {
-                vscode.window.showInformationMessage(
-                    'CodePilot: Apply workflow coming next.'
-                );
+                try {
+                    const response = await fetch(
+                        'http://127.0.0.1:8000/api/apply',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                workspace_path: result.workspace_path,
+                                proposed_file: result.proposed_file,
+                                proposed_old_text: result.proposed_old_text,
+                                proposed_new_text: result.proposed_new_text
+                            })
+                        }
+                    );
+
+                    const applyResult = await response.json() as {
+                        status: string;
+                        message?: string;
+                    };
+
+                    if (!response.ok || applyResult.status !== 'applied') {
+                        throw new Error(
+                            applyResult.message || 'Failed to apply fix'
+                        );
+                    }
+
+                    vscode.window.showInformationMessage(
+                        `CodePilot: Fix applied to ${result.proposed_file}`
+                    );
+
+                    panel.dispose();
+
+                } catch (error) {
+                    vscode.window.showErrorMessage(
+                        `CodePilot: Failed to apply fix: ${error}`
+                    );
+                }
             }
         },
         undefined,
