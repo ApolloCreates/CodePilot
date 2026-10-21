@@ -81,7 +81,15 @@ Tool usage:
 
         if not response.tool_calls:
             print("LLM returned a final response.")
-            return response.content
+
+            evidence_text = "\n".join(evidence)
+
+            return (
+                "FINAL INVESTIGATION SUMMARY:\n"
+                f"{response.content}\n\n"
+                "RAW REPOSITORY TOOL EVIDENCE:\n"
+                f"{evidence_text}"
+            )
 
         for tool_call in response.tool_calls:
 

@@ -114,6 +114,11 @@ Rules:
 - Do not invent files, functions, code, or behavior.
 - Do not propose a fix.
 - Do not include markdown.
+- Treat raw repository tool evidence as authoritative over the investigation summary.
+- Before selecting a file, inspect the actual source lines for the relevant functions.
+- Never claim a source line exists unless it appears in the supplied repository evidence.
+- If a summary conflicts with the raw source evidence, follow the raw source evidence.
+- Identify the function where the incorrect calculation originates before selecting files to modify.
 """
 
     response = llm.invoke([
@@ -273,12 +278,16 @@ Repository context:
 Create a minimal fix plan.
 
 Rules:
-- Only plan changes supported by the evidence.
-- Do not invent files or code.
+- Only plan changes supported by the repository evidence.
+- Trace the relevant function calls and identify which function owns the incorrect behavior.
+- Select the file containing the root cause, not merely a file that calls the affected function.
+- Prefer fixing the underlying function over adding a workaround in its caller.
+- For example, if calculate_total() returns an incorrect total because its pricing logic is incomplete, prefer fixing calculate_total() rather than adding a correction in create_order().
+- Include only files that genuinely need changes.
+- Do not invent files, functions, or code.
 - Prefer the smallest change that fixes the root cause.
 - Do not modify tests unless the existing test is incorrect.
-- Do not implement the fix.
-- Do not execute commands.
+- Do not implement the fix or execute commands.
 
 Return ONLY valid JSON:
 
@@ -299,6 +308,13 @@ Return ONLY valid JSON:
 
     try:
         plan = parse_json_response(response.content)
+        print("\n--- CODEPILOT FIX PLAN DEBUG ---")
+        print("Root cause:", state["root_cause"])
+        print("Evidence:", state["diagnosis_evidence"])
+        print("Plan:", plan.get("plan"))
+        print("Files to modify:", plan.get("files_to_modify"))
+        print("Changes:", plan.get("changes"))
+        print("--- END FIX PLAN DEBUG ---\n")
     except json.JSONDecodeError as error:
         raise ValueError(
             f"LLM returned invalid fix plan JSON: {response.content}"

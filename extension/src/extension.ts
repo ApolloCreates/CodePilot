@@ -266,13 +266,16 @@ function showResultPanel(
                     );
 
                     const applyResult = await response.json() as {
-                        status: string;
+                        status?: string;
                         message?: string;
+                        detail?: string;
                     };
 
                     if (!response.ok || applyResult.status !== 'applied') {
                         throw new Error(
-                            applyResult.message || 'Failed to apply fix'
+                            applyResult.detail ||
+                            applyResult.message ||
+                            `Failed to apply fix (HTTP ${response.status})`
                         );
                     }
 
